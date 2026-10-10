@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@source "../components";
+@source "../app";
+@source "../lib";
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Make sure map takes full height */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.maplibregl-map {
+  font-family: inherit !important;
+}
+
+/* --- MAPBOX DRAW CUSTOM STYLING --- */
+
+/* --- MAPBOX DRAW CUSTOM STYLING (MATCH NATIVE MAPLIBRE) --- */
+
+/* Samakan persis letak margin dan floating dengan bawaan MapLibre */
+.maplibregl-ctrl-top-left .mapboxgl-ctrl {
+  clear: both !important;
+  float: left !important;
+  margin: 10px 0 0 10px !important;
+  pointer-events: auto !important;
+}
+
+/* Reset container agar menyatu seperti kontrol zoom bawaan */
+.mapboxgl-ctrl-group {
+  background: #fff !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.1) !important;
+  display: block !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+/* Ukuran tombol persis disamakan dengan Zoom Control MapLibre (29x29px) */
+.mapboxgl-ctrl-group button.mapbox-gl-draw_polygon,
+.mapboxgl-ctrl-group button.mapbox-gl-draw_trash {
+  width: 29px !important;
+  height: 29px !important;
+  display: block !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-sizing: border-box !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  float: none !important;
+  margin: 0 !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+/* Beri garis pemisah persis seperti di antara tombol + dan - */
+.mapboxgl-ctrl-group button.mapbox-gl-draw_trash {
+  border-top: 1px solid #ddd !important;
+}
+
+/* Hover effect bawaan maplibre */
+.mapboxgl-ctrl-group button.mapbox-gl-draw_polygon:hover,
+.mapboxgl-ctrl-group button.mapbox-gl-draw_trash:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Active effect */
+.mapboxgl-ctrl-group button.mapbox-gl-draw_polygon.active {
+  background-color: #ecfdf5 !important;
+}
+
+
+/* Force custom edit buttons to stack vertically below the trash button */
+.mapboxgl-ctrl-group button.custom-edit-toggle-btn,
+.mapboxgl-ctrl-group button.custom-fast-edit-toggle-btn {
+  width: 29px !important;
+  height: 29px !important;
+  display: block !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-sizing: border-box !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  float: none !important;
+  margin: 0 !important;
+  border-top: 1px solid #ddd !important;
+}
+
+.mapboxgl-ctrl-group button.custom-edit-toggle-btn:hover,
+.mapboxgl-ctrl-group button.custom-fast-edit-toggle-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ==========================================================================
+   PRINT MAP STYLES
+   ========================================================================== */
+@media print {
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  /* Hide navbar, all map controls, and UI overlays */
+  nav,
+  .maplibregl-ctrl-top-left,
+  .maplibregl-ctrl-top-right,
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left,
+  .mapboxgl-ctrl-top-left, 
+  .mapboxgl-ctrl-top-right, 
+  .mapboxgl-ctrl-bottom-right,
+  .mapboxgl-ctrl-bottom-left,
+  .ui-overlay-tools,
+  .print-hide {
+    display: none !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
