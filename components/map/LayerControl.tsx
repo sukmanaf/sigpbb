@@ -2,7 +2,7 @@
 
 import Swal from 'sweetalert2';
 import { useContext, useState } from 'react';
-import { MapContext, DEFAULT_LAYER_STYLES } from '@/components/providers/MapProvider';
+import { MapContext, DEFAULT_LAYER_STYLES, MapContextType } from '@/components/providers/MapProvider';
 import { LayerState, LayerStyle } from '@/types/map';
 import { Layers, Palette, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
@@ -56,7 +56,7 @@ function getGeoJSONBBox(geojson: any): [number, number, number, number] | null {
 function TematikLayerRow({
   ctx,
 }: {
-  ctx: NonNullable<ReturnType<typeof useContext<typeof MapContext>>>;
+  ctx: MapContextType;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { map, layers, setLayers, layerStyles, setLayerStyles, activeTematik } = ctx;
@@ -107,7 +107,7 @@ function TematikLayerRow({
             if (ctx.selectedDesa) {
               const features = map.querySourceFeatures('desas', { sourceLayer: 'desas', filter: ['==', 'd_kd_kel', ctx.selectedDesa] });
               if (features && features.length > 0) {
-                const fc = { type: 'FeatureCollection', features: features.map(f => f.toJSON()) };
+                const fc = { type: 'FeatureCollection', features: features.map((f: any) => f.toJSON()) };
                 const bbox = getGeoJSONBBox(fc);
                 if (bbox) {
                   map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1500 });
@@ -263,7 +263,7 @@ export function LayerControl({ onClose }: { onClose?: () => void }) {
       // Try to get bounds from currently loaded source features
       const features = map.querySourceFeatures('desas', { sourceLayer: 'desas', filter: ['==', 'd_kd_kel', selectedDesa] });
       if (features && features.length > 0) {
-        const fc = { type: 'FeatureCollection', features: features.map(f => f.toJSON()) };
+        const fc = { type: 'FeatureCollection', features: features.map((f: any) => f.toJSON()) };
         const bbox = getGeoJSONBBox(fc);
         if (bbox) {
           map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, duration: 1500 });

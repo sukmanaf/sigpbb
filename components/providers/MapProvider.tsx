@@ -13,7 +13,7 @@ export const DEFAULT_LAYER_STYLES: LayerStyles = {
   bangunans: { fillColor: '#7c3aed', fillOpacity: 60, outlineColor: '#7c3aed', outlineOpacity: 80 },
 };
 
-interface MapContextType {
+export interface MapContextType {
   map: MapInstance | null;
   setMap: (map: MapInstance | null) => void;
   mode: AppMode;

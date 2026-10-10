@@ -469,8 +469,6 @@ export function MapUIOverlay() {
                   style={{
                     objectFit: 'contain',
                     objectPosition: 'center',
-                    imageRendering: 'high-quality',
-                    transform: 'translateZ(0)'
                   }}
                 />
               </div>
