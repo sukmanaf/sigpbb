@@ -15,6 +15,7 @@ export const pool =
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPg.pool = pool;
