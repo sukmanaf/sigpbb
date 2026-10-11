@@ -16,8 +16,11 @@ export function useNopDetail(nop: string | null) {
     setError(null);
 
     fetch(`/api/nops/${encodeURIComponent(nop)}/detail`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch NOP detail');
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Data NOP tidak ditemukan');
+        }
         return res.json();
       })
       .then((json) => setData(json))

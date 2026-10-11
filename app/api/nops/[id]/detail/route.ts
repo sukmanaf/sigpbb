@@ -26,9 +26,13 @@ export async function GET(
             `${SISMIOP_API_URL}/GetsPublicData/InformasiOp`,
             formattedNop
         );
-        // Bapenda API returns the actual payload nested in data.data
-        if (apiResponse && apiResponse.data && apiResponse.data.data) {
+        // Bapenda API returns the actual payload nested in data.data or data
+        if (apiResponse && apiResponse.data && apiResponse.data.INFORMASI_RINCI_OBJEK_PAJAK) {
+            pbbData = apiResponse.data;
+        } else if (apiResponse && apiResponse.data && apiResponse.data.data) {
             pbbData = apiResponse.data.data;
+        } else if (apiResponse && apiResponse.INFORMASI_RINCI_OBJEK_PAJAK) {
+            pbbData = apiResponse;
         } else if (apiResponse && apiResponse.data) {
             pbbData = apiResponse.data;
         }
@@ -63,6 +67,7 @@ function makeHttpsRequest(url: string, nop: string): Promise<any> {
             path: urlObj.pathname,
             method: 'POST',
             rejectUnauthorized: false,
+            timeout: 8000, // 8 detik timeout yang cukup untuk response SISMIOP Bapenda
             headers: {
                 'Content-Type': `multipart/form-data; boundary=${boundary}`,
                 'Content-Length': Buffer.byteLength(body),
@@ -79,6 +84,10 @@ function makeHttpsRequest(url: string, nop: string): Promise<any> {
                     reject(new Error('Invalid JSON response'));
                 }
             });
+        });
+
+        req.on('timeout', () => {
+            req.destroy(new Error('SISMIOP request timeout'));
         });
 
         req.on('error', reject);

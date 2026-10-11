@@ -69,17 +69,16 @@ export function NopInfoModal() {
     const nop = selectedNop || '';
     const tematikCategory = undefined; // Will be connected to MapContext in Tahap 5
     
-    // Check if data is missing or empty, then alert and close
+    // Check if fetch explicitly failed, then alert and close
     useEffect(() => {
-        if (!isOpen || loading) return;
+        if (!isOpen) return;
         
-        const hasData = nopDetail?.pbb?.INFORMASI_RINCI_OBJEK_PAJAK && nopDetail.pbb.INFORMASI_RINCI_OBJEK_PAJAK.length > 0;
-        
-        if (!hasData || fetchError) {
-            Swal.fire('NOP Belum Terdaftar', `NOP ${selectedNop} belum ada di SISMIOP. Silahkan Update NOP tersebut di SISMIOP`, 'info');
+        // Only close if loading is complete and an error occurred
+        if (fetchError && !loading) {
+            Swal.fire('NOP Tidak Ditemukan', `NOP ${selectedNop} tidak ditemukan di database.`, 'info');
             onClose();
         }
-    }, [loading, nopDetail, fetchError, isOpen, selectedNop]);
+    }, [fetchError, loading, isOpen, selectedNop]);
 
     const [activeTab, setActiveTab] = useState<'objek' | 'bangunan' | 'usulan'>('objek');
     const [selectedYear, setSelectedYear] = useState<string>('');
@@ -96,8 +95,9 @@ export function NopInfoModal() {
         INFORMASI_RINCI_OBJEK_PAJAK: nopDetail.pbb.INFORMASI_RINCI_OBJEK_PAJAK || [],
         INFORMASI_BANGUNAN: nopDetail.pbb.INFORMASI_BANGUNAN || []
     } : null;
-    
-    const error = (!loading && !data) ? "Data PBB tidak tersedia di API SISMIOP" : null;
+
+    const hasPbbData = Boolean(data && data.INFORMASI_RINCI_OBJEK_PAJAK && data.INFORMASI_RINCI_OBJEK_PAJAK.length > 0);
+    const hasSismiopBangunan = Boolean(data && data.INFORMASI_BANGUNAN && data.INFORMASI_BANGUNAN.length > 0);
 
     useEffect(() => {
         if (data?.INFORMASI_RINCI_OBJEK_PAJAK?.length > 0) {
@@ -202,9 +202,6 @@ export function NopInfoModal() {
         const date = new Date(dateStr);
         return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     };
-    if (!isOpen) return null;
-    const isDataEmpty = !nopDetail?.pbb?.INFORMASI_RINCI_OBJEK_PAJAK || nopDetail.pbb.INFORMASI_RINCI_OBJEK_PAJAK.length === 0;
-    if (!loading && (isDataEmpty || fetchError)) return null;
 
     return (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -218,7 +215,6 @@ export function NopInfoModal() {
                         <div>
                             <h2 className="text-xl font-bold">Informasi Objek Pajak</h2>
                             <p className="text-emerald-100 text-sm font-mono">{nop}</p>
-
                         </div>
                     </div>
                     <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-xl transition-colors">
@@ -272,16 +268,7 @@ export function NopInfoModal() {
                         </div>
                     )}
 
-                    {error && activeTab !== 'usulan' && (
-                        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2 border border-red-200">
-                            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {error}
-                        </div>
-                    )}
-
-                    {!loading && !error && data && (
+                    {!loading && (
                         <>
                             {/* Tab: Objek Pajak */}
                             {activeTab === 'objek' && (
@@ -294,36 +281,79 @@ export function NopInfoModal() {
                                         </div>
                                     )}
 
-                                    {/* Year Dropdown */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-600 mb-2">Tahun Pajak</label>
-                                        <select
-                                            value={selectedYear || ''}
-                                            onChange={(e) => setSelectedYear(e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                        >
-                                            {data.INFORMASI_RINCI_OBJEK_PAJAK?.map((o: any) => (
-                                                <option key={o.TAHUN_PAJAK} value={o.TAHUN_PAJAK}>
-                                                    {o.TAHUN_PAJAK}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    {/* If PBB SISMIOP data is available */}
+                                    {hasPbbData ? (
+                                        <>
+                                            {/* Year Dropdown */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-600 mb-2">Tahun Pajak</label>
+                                                <select
+                                                    value={selectedYear || ''}
+                                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                                >
+                                                    {data!.INFORMASI_RINCI_OBJEK_PAJAK?.map((o: any) => (
+                                                        <option key={o.TAHUN_PAJAK} value={o.TAHUN_PAJAK}>
+                                                            {o.TAHUN_PAJAK}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
 
-                                    {selectedObjek && (
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                            <InfoCard label="Wajib Pajak" value={selectedObjek.WAJIB_PAJAK} span={2} />
-                                            <InfoCard label="Status" value={selectedObjek.STATUS} span={2} />
-                                            <InfoCard label="Letak OP" value={selectedObjek.LETAK_OP} span={4} />
-                                            <InfoCard label="Alamat" value={selectedObjek.ALAMAT} span={4} />
-                                            <InfoCard label="Luas Tanah" value={selectedObjek.LUAS_TANAH} span={2} />
-                                            <InfoCard label="Jenis Tanah" value={selectedObjek.JENIS_TANAH} span={2} />
-                                            <InfoCard label="Kode ZNT" value={selectedObjek.KODE_ZNT} />
-                                            <InfoCard label="Jumlah Bangunan" value={selectedObjek.JUMLAH_BANGUNAN} />
-                                            <InfoCard label="NPWP" value={selectedObjek.NPWP} span={2} />
-                                            <InfoCard label="NJOP Bumi" value={formatCurrency(selectedObjek.NJOP_BUMI)} highlight span={2} />
-                                            <InfoCard label="NJOP Bangunan" value={formatCurrency(selectedObjek.NJOP_BANGUNAN)} highlight span={2} />
-                                            <InfoCard label="PBB" value={formatCurrency(selectedObjek.PBB)} highlight span={4} />
+                                            {selectedObjek && (
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                    <InfoCard label="Wajib Pajak" value={selectedObjek.WAJIB_PAJAK} span={2} />
+                                                    <InfoCard label="Status" value={selectedObjek.STATUS} span={2} />
+                                                    <InfoCard label="Letak OP" value={selectedObjek.LETAK_OP} span={4} />
+                                                    <InfoCard label="Alamat" value={selectedObjek.ALAMAT} span={4} />
+                                                    <InfoCard label="Luas Tanah (SISMIOP)" value={`${selectedObjek.LUAS_TANAH} m²`} span={2} />
+                                                    <InfoCard label="Jenis Tanah" value={selectedObjek.JENIS_TANAH} span={2} />
+                                                    <InfoCard label="Kode ZNT" value={selectedObjek.KODE_ZNT} />
+                                                    <InfoCard label="Jumlah Bangunan" value={selectedObjek.JUMLAH_BANGUNAN} />
+                                                    <InfoCard label="NPWP" value={selectedObjek.NPWP} span={2} />
+                                                    <InfoCard label="NJOP Bumi" value={formatCurrency(selectedObjek.NJOP_BUMI)} highlight span={2} />
+                                                    <InfoCard label="NJOP Bangunan" value={formatCurrency(selectedObjek.NJOP_BANGUNAN)} highlight span={2} />
+                                                    <InfoCard label="PBB" value={formatCurrency(selectedObjek.PBB)} highlight span={4} />
+                                                </div>
+                                            )}
+
+                                            {/* GIS Info Footer */}
+                                            {nopDetail && (
+                                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Informasi Bidang Peta GIS</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                        <InfoCard label="Kelurahan / Desa" value={nopDetail.d_nm_kel || '-'} />
+                                                        <InfoCard label="Blok" value={nopDetail.d_blok || '-'} />
+                                                        <InfoCard label="Luas Peta (GIS)" value={nopDetail.d_luas ? `${nopDetail.d_luas} m²` : '-'} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        /* Fallback: When SISMIOP PBB data is unavailable */
+                                        <div>
+                                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+                                                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                                <div className="text-sm">
+                                                    <p className="font-semibold text-amber-900">Data PBB SISMIOP Belum Tersedia / Server Bapenda Offline</p>
+                                                    <p className="text-amber-700 text-xs mt-1">
+                                                        Rincian tagihan PBB dari server SISMIOP Bapenda sedang tidak dapat diakses atau objek pajak belum tercatat di SISMIOP. Berikut data spasial objek pajak dari database peta GIS:
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                <InfoCard label="Nomor Objek Pajak (NOP)" value={nopDetail?.d_nop || nop} highlight span={4} />
+                                                <InfoCard label="Kelurahan / Desa" value={nopDetail?.d_nm_kel || '-'} span={2} />
+                                                <InfoCard label="Kode Kelurahan" value={nopDetail?.d_kd_kel || '-'} span={2} />
+                                                <InfoCard label="Kode Blok" value={nopDetail?.d_blok || '-'} span={2} />
+                                                <InfoCard label="Luas Bidang (Peta GIS)" value={nopDetail?.d_luas ? `${nopDetail.d_luas} m²` : '-'} span={2} />
+                                                <InfoCard 
+                                                    label="Bangunan Terpetakan" 
+                                                    value={nopDetail?.bangunan && nopDetail.bangunan.length > 0 ? `${nopDetail.bangunan.length} bangunan` : 'Tidak ada poligon bangunan'} 
+                                                    span={4} 
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -332,7 +362,7 @@ export function NopInfoModal() {
                             {/* Tab: Bangunan */}
                             {activeTab === 'bangunan' && (
                                 <div className="space-y-4">
-                                    {data.INFORMASI_BANGUNAN?.length > 0 ? (
+                                    {hasSismiopBangunan ? (
                                         <>
                                             {/* Bangunan Dropdown */}
                                             <div>
@@ -342,7 +372,7 @@ export function NopInfoModal() {
                                                     onChange={(e) => setSelectedBangunan(e.target.value)}
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                 >
-                                                    {data.INFORMASI_BANGUNAN?.map((b: any) => (
+                                                    {data!.INFORMASI_BANGUNAN?.map((b: any) => (
                                                         <option key={b.NO_BNG} value={b.NO_BNG}>
                                                             Bangunan {b.BANGUNAN_KE} - {b.PENGGUNAAN_BANGUNAN}
                                                         </option>
@@ -366,15 +396,30 @@ export function NopInfoModal() {
                                                 </div>
                                             )}
                                         </>
+                                    ) : nopDetail?.bangunan && nopDetail.bangunan.length > 0 ? (
+                                        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4">
+                                            <p className="text-sm font-semibold text-emerald-900 mb-1">Bangunan di Peta GIS</p>
+                                            <p className="text-xs text-gray-600 mb-3">Terdapat {nopDetail.bangunan.length} poligon bangunan terdaftar di database peta.</p>
+                                            <div className="space-y-2">
+                                                {nopDetail.bangunan.map((b: any, idx: number) => (
+                                                    <div key={b.id || idx} className="bg-white p-3 rounded-lg border border-gray-200 text-xs text-gray-700 flex justify-between">
+                                                        <span>Bangunan #{idx + 1} (ID: {b.id})</span>
+                                                        <span className="text-emerald-600 font-medium">Tersedia di layer peta</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     ) : (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                            <p>Tidak ada data bangunan</p>
+                                        <div className="text-center py-10 text-gray-500">
+                                            <Building2 className="w-12 h-12 mx-auto mb-2 opacity-40 text-gray-400" />
+                                            <p className="text-sm font-medium">Tidak ada data bangunan</p>
+                                            <p className="text-xs text-gray-400 mt-1">Tidak ditemukan bangunan terdaftar untuk objek pajak ini.</p>
                                         </div>
                                     )}
                                 </div>
                             )}
 
+                            {/* Tab: Usulan */}
                             {activeTab === 'usulan' && canSubmitUsulan && (
                                 <div className="space-y-6">
                                     {/* Form Submit Usulan */}
@@ -454,86 +499,6 @@ export function NopInfoModal() {
                                 </div>
                             )}
                         </>
-                    )}
-
-                    {/* Usulan tab content when data is not needed */}
-                    {activeTab === 'usulan' && canSubmitUsulan && (loading || error) && (
-                        <div className="space-y-6">
-                            {/* Form and list for usulan - can work independently of NOP data */}
-                            <form onSubmit={handleSubmitUsulan} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                    <MessageSquarePlus size={16} className="text-emerald-600" />
-                                    Ajukan Usulan Baru
-                                </h3>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Keterangan Usulan</label>
-                                        <textarea
-                                            value={keterangan}
-                                            onChange={(e) => setKeterangan(e.target.value)}
-                                            placeholder="Jelaskan detail usulan Anda..."
-                                            rows={4}
-                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                                            required
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={submittingUsulan || !keterangan.trim()}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {submittingUsulan ? (
-                                            <Loader2 size={16} className="animate-spin" />
-                                        ) : (
-                                            <Send size={16} />
-                                        )}
-                                        Kirim Usulan
-                                    </button>
-                                </div>
-                            </form>
-
-                            {/* List Usulan */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-700 mb-3">Riwayat Usulan</h3>
-                                {loadingUsulan ? (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                                    </div>
-                                ) : usulanList.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        <MessageSquarePlus className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                        <p className="text-sm">Belum ada usulan untuk NOP ini</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {usulanList.map((item) => {
-                                            const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
-                                            return (
-                                                <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                                        <div className="flex-1">
-                                                            <span className="text-sm font-medium text-gray-900">{item.jenis_usulan}</span>
-                                                            <p className="text-xs text-gray-500 mt-0.5">{formatDate(item.created_at)}</p>
-                                                        </div>
-                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${statusConfig.color}`}>
-                                                            {statusConfig.icon}
-                                                            {statusConfig.label}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">{item.keterangan}</p>
-                                                    {item.catatan_bapenda && (
-                                                        <div className="mt-2 pt-2 border-t border-gray-100">
-                                                            <p className="text-xs text-gray-500">Catatan Bapenda:</p>
-                                                            <p className="text-sm text-gray-700">{item.catatan_bapenda}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
                     )}
                 </div>
 
