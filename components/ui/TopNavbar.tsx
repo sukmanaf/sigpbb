@@ -4,9 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 
 import Link from 'next/link';
 import ChangePasswordModal from '@/components/ui/ChangePasswordModal';
-import { Pencil, Layers, ChevronDown, Map, LogOut, Users, Key, User, Menu, X, MessageSquarePlus, Settings, FileText } from 'lucide-react';
+import { Pencil, Layers, ChevronDown, Map, LogOut, Users, Key, User, Menu, X, MessageSquarePlus, Settings, FileText, Download } from 'lucide-react';
 import { useState, useRef, useEffect, useContext } from 'react';
 import { MapContext } from '@/components/providers/MapProvider';
+import { ExportLayerModal } from '@/components/map/ExportLayerModal';
 import Swal from 'sweetalert2';
 
 const tematikItems = [
@@ -28,6 +29,7 @@ export function TopNavbar() {
   const [appName, setAppName] = useState('SmartMap');
   const [appLogo, setAppLogo] = useState<string | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -45,7 +47,7 @@ export function TopNavbar() {
     fetchSettings();
   }, []);
   
-  const { user: currentUser, logout, canManageUsers, canEdit } = useAuth();
+  const { user: currentUser, logout, canManageUsers, canEdit, canExport } = useAuth();
   const editMode = ctx?.mode === 'edit';
 
   return (
@@ -84,6 +86,17 @@ export function TopNavbar() {
                 <FileText size={18} className="sm:w-4 sm:h-4" />
                 <span className="hidden md:inline">Usulan</span>
               </Link>
+            )}
+
+            {canExport && (
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="px-2 sm:px-3 py-2 rounded-lg text-emerald-50 hover:bg-white/10 hover:text-white font-medium flex items-center gap-1.5 sm:gap-2 transition-colors"
+                title="Export Layer Default"
+              >
+                <Download size={18} className="sm:w-4 sm:h-4" />
+                <span className="hidden md:inline">Export</span>
+              </button>
             )}
 
             {/* Tematik Dropdown */}
@@ -198,6 +211,7 @@ export function TopNavbar() {
       </div>
     </nav>
       {showChangePassword && <ChangePasswordModal isOpen={showChangePassword} onClose={() => setShowChangePassword(false)} />}
+      {canExport && <ExportLayerModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />}
     </>
   );
 }

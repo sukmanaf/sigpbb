@@ -19,6 +19,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     canEdit: boolean;
     canManageUsers: boolean;
+    canExport: boolean;
     refreshUser: () => Promise<void>;
 }
 
@@ -49,6 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check if user can manage users (admin only)
     const canManageUsers = user?.role === 'admin';
+
+    // Check if user can export layers (admin, bapenda, bpn)
+    const canExport = user?.role === 'admin' || user?.role === 'bapenda' || user?.role === 'bpn';
 
     // Fetch current user
     const refreshUser = useCallback(async () => {
@@ -131,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 logout,
                 canEdit,
                 canManageUsers,
+                canExport,
                 refreshUser,
             }}
         >

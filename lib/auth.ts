@@ -125,3 +125,8 @@ export function canUserEdit(role: UserRole): boolean {
 export function canUserManage(role: UserRole): boolean {
     return role === 'admin';
 }
+
+// Check if user can export layers
+export function canUserExport(role: UserRole): boolean {
+    return role === 'admin' || role === 'bapenda' || role === 'bpn';
+}

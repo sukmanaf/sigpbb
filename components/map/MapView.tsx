@@ -362,6 +362,7 @@ export function MapView() {
     return () => {
       cancelled = true;
       if (mapRef.current) {
+        ctx?.setMap(null);
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -427,13 +428,33 @@ export function MapView() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleNopClick = (e: any) => {
       if (!e.features?.[0] || ctx.mode !== 'view') return;
+
       const nop: string = e.features[0].properties.d_nop;
       if (nop) ctx.setSelectedNop(nop);
     };
 
-    // Desktop: standard MapLibre click events
-    map.on('click', 'desas-fill', handleDesaClick);
-    map.on('click', 'nops-fill', handleNopClick);
+    // Unified desktop map click handler to guarantee desa and NOP clicks even with overlapping layers
+    const onMapClick = (e: any) => {
+      if (!map || ctx.mode !== 'view') return;
+
+      // 1. If in city view (no desa selected), check if a desa was clicked
+      if (!ctx.selectedDesa) {
+        const desasFeatures = map.queryRenderedFeatures(e.point, { layers: ['desas-fill'] });
+        if (desasFeatures && desasFeatures.length > 0) {
+          handleDesaClick({ features: desasFeatures, point: e.point });
+          return;
+        }
+      } else {
+        // 2. If inside a desa, check if a NOP was clicked
+        const nopsFeatures = map.queryRenderedFeatures(e.point, { layers: ['nops-fill'] });
+        if (nopsFeatures && nopsFeatures.length > 0) {
+          handleNopClick({ features: nopsFeatures, point: e.point });
+          return;
+        }
+      }
+    };
+
+    map.on('click', onMapClick);
 
     // Mobile/Tablet: touchend on the canvas for reliable tap detection
     const canvas = map.getCanvas();
@@ -467,14 +488,14 @@ export function MapView() {
       // Query desas layer first
       const desasFeatures = map.queryRenderedFeatures(point, { layers: ['desas-fill'] });
       if (desasFeatures.length > 0) {
-        handleDesaClick({ features: desasFeatures });
+        handleDesaClick({ features: desasFeatures, point });
         return;
       }
 
       // Then query nops layer
       const nopsFeatures = map.queryRenderedFeatures(point, { layers: ['nops-fill'] });
       if (nopsFeatures.length > 0) {
-        handleNopClick({ features: nopsFeatures });
+        handleNopClick({ features: nopsFeatures, point });
       }
     };
 
@@ -482,13 +503,12 @@ export function MapView() {
     canvas.addEventListener('touchend', onTouchEnd, { passive: true });
 
     return () => {
-      map.off('click', 'desas-fill', handleDesaClick);
-      map.off('click', 'nops-fill', handleNopClick);
+      map.off('click', onMapClick);
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchend', onTouchEnd);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, ctx?.mode]);
+  }, [mapLoaded, ctx?.mode, ctx?.selectedDesa]);
 
 
 

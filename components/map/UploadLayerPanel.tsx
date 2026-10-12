@@ -36,7 +36,7 @@ export function UploadLayerPanel({ onClose }: UploadLayerPanelProps) {
         color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') // Random color
       };
       
-      setUploadedLayers([...uploadedLayers, newLayer]);
+      setUploadedLayers([newLayer, ...uploadedLayers]);
       onClose(); // Optional: close panel after successful upload
     } catch (err) {
       console.error(err);

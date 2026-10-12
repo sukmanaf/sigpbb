@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback, useContext, useEffect } from 'react';
-import { Search, Layers, Printer, X, Image as ImageIcon, FileText, Filter } from 'lucide-react';
+import { Search, Layers, Printer, X, Image as ImageIcon, FileText, Filter, Download } from 'lucide-react';
 import { MapContext } from '@/components/providers/MapProvider';
+import { useAuth } from '@/contexts/AuthContext';
 import { SearchBox } from './SearchBox';
 import { LayerControl } from './LayerControl';
 import { UploadLayerPanel } from './UploadLayerPanel';
+import { ExportLayerModal } from './ExportLayerModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // Read legend items from the DOM and draw them on a canvas context
@@ -108,9 +110,11 @@ function drawLegendOnCanvas(ctx: CanvasRenderingContext2D, mapWidth: number, map
 
 export function MapUIOverlay() {
   const ctx = useContext(MapContext);
+  const { canExport } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLayerOpen, setIsLayerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [isFilterBlokOpen, setIsFilterBlokOpen] = useState(false);
   const [availableBlocks, setAvailableBlocks] = useState<string[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
@@ -390,6 +394,20 @@ export function MapUIOverlay() {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           </button>
         )}
+        {canExport && (
+          <button
+            onClick={() => {
+              setIsExportOpen(true);
+              setIsSearchOpen(false);
+              setIsLayerOpen(false);
+              setIsUploadOpen(false);
+            }}
+            className="w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-gray-700 hover:text-emerald-600 hover:bg-gray-50 transition-colors border border-gray-200"
+            title="Export Layer Default"
+          >
+            <Download size={20} />
+          </button>
+        )}
         {isPrintEnabled && (
           <button
             onClick={handleCaptureMap}
@@ -477,7 +495,7 @@ export function MapUIOverlay() {
             {/* Action Buttons */}
             <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 shrink-0">
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700">Orientasi PDF:</label>
+                <label className="text-sm font-medium text-gray-700">Orientasi:</label>
                 <select
                   value={printOrientation}
                   onChange={(e) => setPrintOrientation(e.target.value as 'landscape' | 'portrait')}
@@ -512,6 +530,14 @@ export function MapUIOverlay() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Export Layer Modal */}
+      {canExport && (
+        <ExportLayerModal
+          isOpen={isExportOpen}
+          onClose={() => setIsExportOpen(false)}
+        />
       )}
     </>
   );
