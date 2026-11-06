@@ -305,6 +305,17 @@ export function MapUIOverlay() {
     }
   }, [printPreview, printOrientation]);
 
+  // Handle ESC key to cancel Street View mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && ctx?.isStreetViewActive) {
+        ctx.setIsStreetViewActive(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [ctx]);
+
   return (
     <>
       {/* Top Right Buttons */}

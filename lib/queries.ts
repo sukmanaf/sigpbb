@@ -8,6 +8,8 @@ export async function getNopDetail(nop: string) {
         n.id, n.d_nop, n.d_luas,
         d.d_kd_kel, d.d_nm_kel,
         b.d_blok,
+        ST_X(ST_Centroid(n.geom)) as longitude,
+        ST_Y(ST_Centroid(n.geom)) as latitude,
         json_agg(
           json_build_object(
             'id', bu.id,
@@ -19,7 +21,7 @@ export async function getNopDetail(nop: string) {
       LEFT JOIN bloks b ON ST_Contains(b.geom, ST_Centroid(n.geom))
       LEFT JOIN bangunans bu ON bu.d_nop = n.d_nop
       WHERE n.d_nop = $1
-      GROUP BY n.id, n.d_nop, n.d_luas, d.d_kd_kel, d.d_nm_kel, b.d_blok
+      GROUP BY n.id, n.d_nop, n.d_luas, d.d_kd_kel, d.d_nm_kel, b.d_blok, n.geom
     `, [nop]);
     return result.rows[0] || null;
   } finally {

@@ -1,7 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { X, Layers, ChevronLeft, ChevronRight, Search, Copy, Check, ExternalLink } from 'lucide-react';
+import { PegmanIcon } from '@/components/icons/PegmanIcon';
+import { openStreetView } from '@/lib/streetview';
+import { MapContext } from '@/components/providers/MapProvider';
+
+function getFeatureCenter(geometry: any): { lat: number; lng: number } | null {
+  if (!geometry) return null;
+  if (geometry.type === 'Point' && Array.isArray(geometry.coordinates)) {
+    return { lng: geometry.coordinates[0], lat: geometry.coordinates[1] };
+  }
+  if (Array.isArray(geometry.coordinates)) {
+    let coords = geometry.coordinates;
+    while (Array.isArray(coords[0]) && typeof coords[0][0] !== 'number') {
+      coords = coords[0];
+    }
+    if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+      return { lng: coords[0][0], lat: coords[0][1] };
+    }
+  }
+  return null;
+}
 
 export interface UploadedFeatureItem {
   id: string;
@@ -28,6 +48,7 @@ export function UploadedFeaturePopup({
   onSelectFeature,
   onClose,
 }: UploadedFeaturePopupProps) {
+  const ctx = useContext(MapContext);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [viewMode, setViewMode] = useState<'single' | 'all'>(
     features.length > 1 ? initialViewMode : 'single'
@@ -302,11 +323,38 @@ export function UploadedFeaturePopup({
                   </div>
                 </div>
               </div>
-              {features.length > 1 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-200/60 text-emerald-800 font-semibold shrink-0">
-                  {currentIndex + 1} / {features.length}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {(() => {
+                  const center = getFeatureCenter(activeFeature.geometry);
+                  if (!center) return null;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (ctx) {
+                          ctx.setActiveStreetViewCoords({
+                            lat: center.lat,
+                            lng: center.lng,
+                            title: activeFeature.layerName,
+                          });
+                        } else {
+                          openStreetView(center.lat, center.lng);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded text-[10px] font-semibold transition-colors shadow-xs"
+                      title="Buka Google Street View 360°"
+                    >
+                      <PegmanIcon className="w-3 h-3 fill-current" />
+                      Street View
+                    </button>
+                  );
+                })()}
+                {features.length > 1 && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-200/60 text-emerald-800 font-semibold shrink-0">
+                    {currentIndex + 1} / {features.length}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Properties List */}

@@ -464,52 +464,8 @@ export function MapDrawCtrl() {
       map.on('click', handleMapClick);
       map.on('draw.update', handleDrawUpdate);
       map.on('draw.selectionchange', handleSelectionChange);
-      const handleBulkSave = async () => {
-       if (!drawControlRef.current) return;
-       const allFeatures = drawControlRef.current.getAll();
-       const featuresToSave = allFeatures.features;
-       
-       if (featuresToSave.length === 0) return;
-       
-       Swal.fire({title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-       try {
-           const res = await fetch('/api/polygons/bulk-update', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ features: featuresToSave })
-           });
-           
-           if (res.ok) {
-               drawControlRef.current.deleteAll();
-               setShowBulkSaveBtn(false);
-               ctx?.setMode('view');
-               
-               // Force map source refresh
-               const map = ctx?.map;
-               if (map) {
-                   ['nops', 'bloks', 'bangunans'].forEach(layer => {
-                       const source = map.getSource(layer);
-                       if (source && (source as any).setTiles) {
-                           (source as any).setTiles([`/api/tiles/${layer}/{z}/{x}/{y}?desa=${ctx.selectedDesa}&t=${Date.now()}`]);
-                           if ((source as any).clearTiles) (source as any).clearTiles();
-                       }
-                   });
-                   // Refresh desas geojson if it was edited
-                   const desasSource = map.getSource('desas');
-                   if (desasSource && (desasSource as any).setData) {
-                       fetch('/api/desas/all').then(r => r.json()).then(data => (desasSource as any).setData(data));
-                   }
-               }
-               Swal.fire('Sukses', 'Pergeseran massal berhasil disimpan!', 'success');
-           } else {
-               throw new Error('Gagal update');
-           }
-       } catch (err) {
-           Swal.fire('Error', 'Gagal menyimpan', 'error');
-       }
-  };
 
-  return () => {
+      return () => {
         map.off('click', handleMapClick);
         map.off('draw.update', handleDrawUpdate);
         map.off('draw.selectionchange', handleSelectionChange);
@@ -524,6 +480,7 @@ export function MapDrawCtrl() {
        drawControlRef.current.deleteAll();
        setEditingPolygonInfo(null);
        setEditModalOpen(false);
+       refreshLayer('desa');
     }
   }, [ctx?.mode]);
 
@@ -592,17 +549,49 @@ export function MapDrawCtrl() {
     refreshLayer(data.type);
   };
 
-  const refreshLayer = (type: string) => {
-    const layerId = type === 'nop' ? 'nops' : type === 'blok' ? 'bloks' : 'bangunans';
+  const refreshLayer = async (type: string) => {
     const mapObj = ctx?.map as any;
-    if (mapObj && mapObj.style && mapObj.style.sourceCaches) {
+    if (!mapObj) return;
+
+    if (type === 'desa') {
+      const desasSource = mapObj.getSource('desas');
+      if (desasSource && desasSource.setData) {
+        try {
+          const res = await fetch(`/api/desas?t=${Date.now()}`);
+          if (res.ok) {
+            const freshData = await res.json();
+            desasSource.setData(freshData);
+            mapObj.triggerRepaint();
+          }
+        } catch (err) {
+          console.error('Failed to reload desas layer:', err);
+        }
+      }
+      return;
+    }
+
+    const layerId = type === 'nop' ? 'nops' : type === 'blok' ? 'bloks' : type === 'bangunan' ? 'bangunans' : type;
+    if (mapObj.style && mapObj.style.sourceCaches) {
       const sourceCache = mapObj.style.sourceCaches[layerId];
       if (sourceCache) {
-        sourceCache.clearTiles();
-        sourceCache.update(mapObj.transform);
+        if (sourceCache.clearTiles) sourceCache.clearTiles();
+        if (sourceCache.update) sourceCache.update(mapObj.transform);
         mapObj.triggerRepaint();
       }
     }
+
+    const source = mapObj.getSource(layerId);
+    if (source && source.setTiles) {
+      const currentTiles = source.tiles || [];
+      if (currentTiles.length > 0) {
+        const baseTileUrl = currentTiles[0].split('&t=')[0].split('?t=')[0];
+        const sep = baseTileUrl.includes('?') ? '&' : '?';
+        source.setTiles([`${baseTileUrl}${sep}t=${Date.now()}`]);
+      }
+      if (source.clearTiles) source.clearTiles();
+    }
+
+    mapObj.triggerRepaint();
   };
 
   if (!canEdit) return null;
@@ -637,11 +626,8 @@ export function MapDrawCtrl() {
                            if ((source as any).clearTiles) (source as any).clearTiles();
                        }
                    });
-                   // Refresh desas geojson if it was edited
-                   const desasSource = map.getSource('desas');
-                   if (desasSource && (desasSource as any).setData) {
-                       fetch('/api/desas/all').then(r => r.json()).then(data => (desasSource as any).setData(data));
-                   }
+                   // Refresh desas geojson
+                   await refreshLayer('desa');
                }
                Swal.fire('Sukses', 'Pergeseran massal berhasil disimpan!', 'success');
            } else {

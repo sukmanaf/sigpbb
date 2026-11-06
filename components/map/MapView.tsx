@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import { MapContext } from '@/components/providers/MapProvider';
 import { BasemapSelector } from './BasemapSelector';
+import { openStreetView } from '@/lib/streetview';
+import Swal from 'sweetalert2';
 
 const LAYER_CONFIG = {
   desas:     { color: '#10b981', label: 'Desa/Kelurahan' },
@@ -28,47 +30,44 @@ export function MapView() {
   const googleSessions = useRef<Record<string, string>>({});
 
   const loadGoogleBasemap = async (map: any, mapType: string, layerId: string) => {
-    // Determine the internal Google mapType and overlay
+    const isOfficial = mapType.startsWith('google-official-');
+    
+    // Determine the base map type & corresponding lyrs code
     let gMapType = 'roadmap';
     let overlay = false;
+    let lyrsCode = 'm';
     
-    if (mapType === 'google-satellite') gMapType = 'satellite';
-    if (mapType === 'google-hybrid') { gMapType = 'satellite'; overlay = true; }
-    if (mapType === 'google-terrain') gMapType = 'terrain';
+    if (mapType.includes('satellite')) {
+      gMapType = 'satellite';
+      lyrsCode = 's';
+    } else if (mapType.includes('hybrid')) {
+      gMapType = 'satellite';
+      overlay = true;
+      lyrsCode = 'y';
+    } else if (mapType.includes('terrain')) {
+      gMapType = 'terrain';
+      lyrsCode = 'p';
+    }
 
-    const sessionKey = `${gMapType}-${overlay}`;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    let tileUrl = '';
+
+    if (isOfficial) {
+      // Jalur Google Maps Platform dengan API Key (Resmi & Langsung tanpa blokir sesi Cloud)
+      tileUrl = `https://mt1.google.com/vt/lyrs=${lyrsCode}&x={x}&y={y}&z={z}${apiKey ? `&key=${apiKey}` : ''}`;
+    } else {
+      // Jalur Bebas Kuota (Gratisan) - 100% langsung tanpa menyentuh API Key
+      tileUrl = `https://mt1.google.com/vt/lyrs=${lyrsCode}&x={x}&y={y}&z={z}`;
+    }
+
+    console.info(
+      `%c [Basemap] %c ${mapType} %c ${isOfficial ? '🔑 RESMI (API Key / Cloud)' : '🆓 BEBAS KUOTA (Gratisan)'}`,
+      'background: #10b981; color: white; border-radius: 4px; padding: 2px;',
+      'font-weight: bold;',
+      isOfficial ? 'color: #3b82f6; font-weight: bold;' : 'color: #10b981; font-weight: bold;'
+    );
 
     try {
-      let sessionToken = googleSessions.current[sessionKey];
-      
-      // Only fetch if we don't have it cached in memory, and API key exists
-      if (!sessionToken && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-        const res = await fetch(`/api/maps/session?mapType=${gMapType}&overlay=${overlay}`);
-        const data = await res.json();
-        if (data.session) {
-          sessionToken = data.session;
-          googleSessions.current[sessionKey] = sessionToken;
-        }
-      }
-
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      
-      // Fallback URL if no API key or session fails
-      let tileUrl = `https://mt1.google.com/vt/lyrs=${mapType === 'google-satellite' || mapType === 'google-hybrid' ? 's' : mapType === 'google-terrain' ? 'p' : 'm'}&x={x}&y={y}&z={z}`;
-      let isOfficial = false;
-      
-      if (sessionToken && apiKey) {
-        tileUrl = `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=${sessionToken}&key=${apiKey}`;
-        isOfficial = true;
-      }
-      
-      console.info(
-        `%c [Basemap] %c ${mapType} %c ${isOfficial ? '✅ RESMI (API Key)' : '⚠️ GRATISAN (Bypass)'}`,
-        'background: #10b981; color: white; border-radius: 4px; padding: 2px;',
-        'font-weight: bold;',
-        isOfficial ? 'color: #10b981; font-weight: bold;' : 'color: #f59e0b; font-weight: bold;'
-      );
-
       // If source already exists, just update tiles
       if (map.getSource(layerId)) {
         if (map.getSource(layerId).setTiles) {
@@ -81,11 +80,10 @@ export function MapView() {
           tiles: [tileUrl],
           tileSize: 256,
           maxzoom: 21,
-          attribution: '© Google',
+          attribution: isOfficial ? '© Google Cloud Platform' : '© Google',
         });
         
         // Add layer BEFORE our vector layers
-        // Find the first vector layer to insert before
         const firstVector = map.getStyle().layers.find((l: any) => l.type === 'fill' || l.type === 'line');
         
         map.addLayer({
@@ -108,7 +106,19 @@ export function MapView() {
     if (!map) return;
 
     // Hide all existing background layers first
-    const bgLayers = ['osm-background', 'google-roadmap-background', 'google-satellite-background', 'google-hybrid-background', 'google-terrain-background'];
+    const bgLayers = [
+      'osm-background',
+      // Gratisan / Bebas Kuota
+      'google-roadmap-background',
+      'google-satellite-background',
+      'google-hybrid-background',
+      'google-terrain-background',
+      // Resmi Google API Key
+      'google-official-roadmap-background',
+      'google-official-satellite-background',
+      'google-official-hybrid-background',
+      'google-official-terrain-background',
+    ];
     bgLayers.forEach(layer => {
       if (map.getLayer(layer)) {
         map.setLayoutProperty(layer, 'visibility', 'none');
@@ -193,7 +203,7 @@ export function MapView() {
         },
       });
 
-      map.addControl(new NavigationControl(), 'top-left');
+      map.addControl(new NavigationControl({ showCompass: false, showZoom: true }), 'top-left');
       map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
 
       map.on('load', () => {
@@ -346,6 +356,31 @@ export function MapView() {
           },
         });
 
+        // 3. Add Google Street View Coverage Layer (Blue Road Network Lines)
+        map.addSource('streetview-coverage', {
+          type: 'raster',
+          tiles: ['/api/streetview-tiles/{z}/{x}/{y}'],
+          tileSize: 256,
+          minzoom: 0,
+          maxzoom: 22,
+        });
+
+        // Insert coverage layer on top of parcel & background fills, right beneath text labels
+        const firstLabel = map.getStyle().layers.find((l: any) => l.type === 'symbol');
+        map.addLayer(
+          {
+            id: 'streetview-coverage-layer',
+            type: 'raster',
+            source: 'streetview-coverage',
+            paint: {
+              'raster-opacity': 1.0,
+              'raster-fade-duration': 0,
+            },
+            layout: { visibility: 'none' },
+          },
+          firstLabel ? firstLabel.id : undefined
+        );
+
         // Cursor effects
         map.on('mouseenter', 'desas-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'desas-fill', () => { map.getCanvas().style.cursor = ''; });
@@ -430,15 +465,33 @@ export function MapView() {
       if (!e.features?.[0] || ctx.mode !== 'view') return;
 
       const nop: string = e.features[0].properties.d_nop;
-      if (nop) ctx.setSelectedNop(nop);
+      if (nop) {
+        ctx.setSelectedNop(nop);
+        if (e.lngLat) {
+          ctx.setSelectedNopCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+        } else if (e.point && map) {
+          const unprojected = map.unproject([e.point.x, e.point.y]);
+          ctx.setSelectedNopCoords({ lat: unprojected.lat, lng: unprojected.lng });
+        }
+      }
     };
 
     // Unified desktop map click handler to guarantee desa and NOP clicks even with overlapping layers
     const onMapClick = (e: any) => {
-      if (!map || ctx.mode !== 'view') return;
+      if (!map) return;
+
+      // If Street View mode is active, open In-Page Street View at clicked coordinate
+      if (ctx?.isStreetViewActive) {
+        const { lng, lat } = e.lngLat;
+        ctx.setActiveStreetViewCoords({ lat, lng, targetLat: lat, targetLng: lng });
+        ctx.setIsStreetViewActive(false);
+        return;
+      }
+
+      if (ctx?.mode !== 'view') return;
 
       // 1. If in city view (no desa selected), check if a desa was clicked
-      if (!ctx.selectedDesa) {
+      if (!ctx?.selectedDesa) {
         const desasFeatures = map.queryRenderedFeatures(e.point, { layers: ['desas-fill'] });
         if (desasFeatures && desasFeatures.length > 0) {
           handleDesaClick({ features: desasFeatures, point: e.point });
@@ -448,7 +501,7 @@ export function MapView() {
         // 2. If inside a desa, check if a NOP was clicked
         const nopsFeatures = map.queryRenderedFeatures(e.point, { layers: ['nops-fill'] });
         if (nopsFeatures && nopsFeatures.length > 0) {
-          handleNopClick({ features: nopsFeatures, point: e.point });
+          handleNopClick({ features: nopsFeatures, point: e.point, lngLat: e.lngLat });
           return;
         }
       }
@@ -485,6 +538,13 @@ export function MapView() {
         y: touch.clientY - rect.top,
       };
 
+      if (ctx?.isStreetViewActive) {
+        const lngLat = map.unproject([point.x, point.y]);
+        ctx.setActiveStreetViewCoords({ lat: lngLat.lat, lng: lngLat.lng });
+        ctx.setIsStreetViewActive(false);
+        return;
+      }
+
       // Query desas layer first
       const desasFeatures = map.queryRenderedFeatures(point, { layers: ['desas-fill'] });
       if (desasFeatures.length > 0) {
@@ -495,7 +555,8 @@ export function MapView() {
       // Then query nops layer
       const nopsFeatures = map.queryRenderedFeatures(point, { layers: ['nops-fill'] });
       if (nopsFeatures.length > 0) {
-        handleNopClick({ features: nopsFeatures, point });
+        const unprojected = map.unproject([point.x, point.y]);
+        handleNopClick({ features: nopsFeatures, point, lngLat: unprojected });
       }
     };
 
@@ -508,9 +569,38 @@ export function MapView() {
       canvas.removeEventListener('touchend', onTouchEnd);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, ctx?.mode, ctx?.selectedDesa]);
+  }, [mapLoaded, ctx?.mode, ctx?.selectedDesa, ctx?.isStreetViewActive]);
 
 
+
+  // Adjust cursor style & toggle blue Street View coverage lines
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    try {
+      if (map.getLayer('streetview-coverage-layer')) {
+        map.setLayoutProperty(
+          'streetview-coverage-layer',
+          'visibility',
+          ctx?.isStreetViewActive ? 'visible' : 'none'
+        );
+        if (ctx?.isStreetViewActive) {
+          const firstLabel = map.getStyle().layers.find((l: any) => l.type === 'symbol');
+          if (firstLabel) {
+            try {
+              map.moveLayer('streetview-coverage-layer', firstLabel.id);
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (ctx?.isStreetViewActive) {
+      map.getCanvas().style.cursor = 'none';
+    } else {
+      map.getCanvas().style.cursor = '';
+    }
+  }, [ctx?.isStreetViewActive, mapLoaded]);
 
   // Update layer styles dynamically based on MapContext
   useEffect(() => {

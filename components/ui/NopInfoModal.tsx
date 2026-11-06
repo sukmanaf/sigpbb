@@ -5,6 +5,7 @@ import { MapContext } from '@/components/providers/MapProvider';
 import { useNopDetail } from '@/hooks/useNopDetail';
 import { X, Building2, FileText, Loader2, MessageSquarePlus, Send, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { StreetViewThumbnail } from '@/components/map/StreetViewThumbnail';
 
 interface ObjekPajak {
     TAHUN_PAJAK: string;
@@ -65,7 +66,10 @@ export function NopInfoModal() {
     const { data: nopDetail, isLoading: loading, error: fetchError } = useNopDetail(selectedNop);
     
     const isOpen = !!selectedNop;
-    const onClose = () => ctx?.setSelectedNop(null);
+    const onClose = () => {
+        ctx?.setSelectedNop(null);
+        ctx?.setSelectedNopCoords(null);
+    };
     const nop = selectedNop || '';
     const tematikCategory = undefined; // Will be connected to MapContext in Tahap 5
     
@@ -217,9 +221,11 @@ export function NopInfoModal() {
                             <p className="text-emerald-100 text-sm font-mono">{nop}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-xl transition-colors">
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-xl transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Tabs */}
@@ -273,6 +279,21 @@ export function NopInfoModal() {
                             {/* Tab: Objek Pajak */}
                             {activeTab === 'objek' && (
                                 <div className="space-y-4">
+                                    {/* Google Street View 360° Preview Card (Prioritizes clicked coordinate at street front, fallback to centroid) */}
+                                    {(() => {
+                                        const targetLat = ctx?.selectedNopCoords?.lat ?? (nopDetail?.latitude ? Number(nopDetail.latitude) : null);
+                                        const targetLng = ctx?.selectedNopCoords?.lng ?? (nopDetail?.longitude ? Number(nopDetail.longitude) : null);
+                                        if (targetLat == null || targetLng == null) return null;
+                                        return (
+                                            <StreetViewThumbnail
+                                                lat={targetLat}
+                                                lng={targetLng}
+                                                title={`NOP ${nop}`}
+                                                variant="card"
+                                            />
+                                        );
+                                    })()}
+
                                     {/* Tematik Category - shown above Tahun Pajak if available */}
                                     {tematikCategory && (
                                         <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">

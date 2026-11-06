@@ -11,6 +11,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { UploadedLayerManager } from '@/components/map/UploadedLayerManager';
 
 import { TopNavbar } from '@/components/ui/TopNavbar';
+import { StreetViewModalHost } from '@/components/map/StreetViewModalHost';
 
 export const metadata: Metadata = {
   title: 'Peta PBB - Sistem Informasi Manajemen',
@@ -21,11 +22,11 @@ export default function MapPage() {
   return (
     <ProtectedRoute>
       <MapProvider>
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-50">
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-50 relative">
         <TopNavbar />
         
         {/* Map Container - Remaining height */}
-        <div className="flex-1 relative z-0">
+        <div className="flex-1 relative">
           <ErrorBoundary
             fallback={
               <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500 text-sm">
@@ -65,6 +66,8 @@ export default function MapPage() {
           </div>
         </div>
         
+        {/* Fullscreen Interactive Google Street View Host (z-[99999] covering whole page) */}
+        <StreetViewModalHost />
       </div>
       </MapProvider>
     </ProtectedRoute>

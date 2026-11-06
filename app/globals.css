@@ -144,3 +144,31 @@ html, body {
 .uploaded-layer-popup .maplibregl-popup-tip {
   border-top-color: #0d9488 !important; /* Matches gradient teal in header */
 }
+
+/* ==========================================================================
+   GOOGLE MAPS & STREET VIEW ERROR POPUP & WATERMARK SUPPRESSION
+   ========================================================================== */
+.gm-err-container,
+.gm-err-content,
+.gm-err-icon,
+.gm-err-title,
+.gm-err-message,
+.dismissButton,
+.gm-style-pbc,
+div:has(> .gm-err-container),
+div:has(> .dismissButton),
+div[aria-label="Google Maps Error"],
+div[aria-label="Kesalahan Google Maps"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Sembunyikan pesan teks watermark for development */
+div[style*="For development purposes only"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+

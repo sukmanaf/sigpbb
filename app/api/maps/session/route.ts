@@ -41,7 +41,17 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
       const errText = await res.text();
-      return NextResponse.json({ error: errText }, { status: res.status });
+      const needsBilling = errText.toLowerCase().includes('billing');
+      return NextResponse.json(
+        {
+          error: errText,
+          needsBilling,
+          message: needsBilling
+            ? 'Akun Google Cloud memerlukan Billing aktif untuk menggunakan Map Tiles API resmi'
+            : 'Gagal membuat sesi Google Map Tiles',
+        },
+        { status: 200 }
+      );
     }
 
     const data = await res.json();

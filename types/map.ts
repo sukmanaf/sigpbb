@@ -21,6 +21,8 @@ export interface NopDetail {
   d_kd_kel: string;
   d_nm_kel: string;
   d_blok?: string;
+  latitude?: number;
+  longitude?: number;
   bangunan?: BuildingInfo[];
   pbb?: any;
 }

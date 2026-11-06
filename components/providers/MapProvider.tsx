@@ -38,6 +38,26 @@ export interface MapContextType {
   setTematikLoading: (l: boolean) => void;
   uploadedLayers: import('@/types/map').UploadedLayer[];
   setUploadedLayers: React.Dispatch<React.SetStateAction<import('@/types/map').UploadedLayer[]>>;
+  isStreetViewActive: boolean;
+  setIsStreetViewActive: (active: boolean) => void;
+  activeStreetViewCoords: {
+    lat: number;
+    lng: number;
+    title?: string;
+    targetLat?: number;
+    targetLng?: number;
+    initialHeading?: number;
+  } | null;
+  setActiveStreetViewCoords: (coords: {
+    lat: number;
+    lng: number;
+    title?: string;
+    targetLat?: number;
+    targetLng?: number;
+    initialHeading?: number;
+  } | null) => void;
+  selectedNopCoords: { lat: number; lng: number } | null;
+  setSelectedNopCoords: (coords: { lat: number; lng: number } | null) => void;
 }
 
 export const MapContext = createContext<MapContextType | null>(null);
@@ -48,6 +68,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [selectedDesa, setSelectedDesa] = useState<string | null>(null);
   const [selectedDesaName, setSelectedDesaName] = useState<string | null>(null);
   const [selectedNop, setSelectedNop] = useState<string | null>(null);
+  const [selectedNopCoords, setSelectedNopCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [layers, setLayers] = useState<LayerState>({
     desas:     true,
     nops:      false,
@@ -60,6 +81,15 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [tematikData, setTematikData] = useState<Record<string, any[]> | null>(null);
   const [tematikLoading, setTematikLoading] = useState<boolean>(false);
   const [uploadedLayers, setUploadedLayers] = useState<import('@/types/map').UploadedLayer[]>([]);
+  const [isStreetViewActive, setIsStreetViewActive] = useState<boolean>(false);
+  const [activeStreetViewCoords, setActiveStreetViewCoords] = useState<{
+    lat: number;
+    lng: number;
+    title?: string;
+    targetLat?: number;
+    targetLng?: number;
+    initialHeading?: number;
+  } | null>(null);
 
 
 // Load from LocalStorage on mount — deep merge with defaults so new fields always exist
@@ -100,6 +130,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
         setSelectedDesaName,
         selectedNop,
         setSelectedNop,
+        selectedNopCoords,
+        setSelectedNopCoords,
         layers,
         setLayers,
         layerStyles,
@@ -114,6 +146,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
         setTematikLoading,
         uploadedLayers,
         setUploadedLayers,
+        isStreetViewActive,
+        setIsStreetViewActive,
+        activeStreetViewCoords,
+        setActiveStreetViewCoords,
       }}
     >
       {children}

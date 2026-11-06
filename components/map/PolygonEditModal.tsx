@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Upload, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export type EditLayerType = 'nop' | 'blok' | 'bangunan';
+export type EditLayerType = 'nop' | 'blok' | 'bangunan' | 'desa';
 
 interface PolygonEditModalProps {
     isOpen: boolean;
@@ -30,6 +30,7 @@ const LAYER_COLORS: Record<EditLayerType, { from: string; to: string }> = {
     nop: { from: 'from-emerald-600', to: 'to-teal-600' },
     blok: { from: 'from-fuchsia-600', to: 'to-purple-600' },
     bangunan: { from: 'from-red-600', to: 'to-orange-600' },
+    desa: { from: 'from-emerald-700', to: 'to-teal-700' },
 };
 
 // Labels for different layer types
@@ -37,6 +38,7 @@ const LAYER_LABELS: Record<EditLayerType, string> = {
     nop: 'NOP',
     blok: 'Blok',
     bangunan: 'Bangunan',
+    desa: 'Desa/Kelurahan',
 };
 
 // Code field labels
@@ -44,6 +46,7 @@ const CODE_LABELS: Record<EditLayerType, string> = {
     nop: 'NOP',
     blok: 'Kode Blok',
     bangunan: 'NOP Referensi',
+    desa: 'Kode Desa',
 };
 
 export default function PolygonEditModal({
@@ -72,9 +75,9 @@ export default function PolygonEditModal({
         setError(null);
     }, [code, isOpen]);
 
-    const colors = LAYER_COLORS[type];
-    const label = LAYER_LABELS[type];
-    const codeLabel = CODE_LABELS[type];
+    const colors = LAYER_COLORS[type] || { from: 'from-emerald-700', to: 'to-teal-700' };
+    const label = LAYER_LABELS[type] || 'Polygon';
+    const codeLabel = CODE_LABELS[type] || 'Kode';
 
     // Filter existing images (remove deleted ones)
     const currentImages = existingImages.filter(img => !deletedImages.includes(img));
